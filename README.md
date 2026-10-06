@@ -1,6 +1,6 @@
-# SIMP — Server Incentive & Metrics Platform
+# S.I.M.P. (Server Incentive & Metrics Platform)
 
-A Discord bot that turns server activity into a lightweight social economy: points, rent, leaderboards, and cycles built on top of raw activity logs (messages, mentions, voice time).
+This is a Discord bot that turns server activity into a lightweight social economy: points, rent, leaderboards, and cycles built on top of raw activity logs (messages, mentions, voice time, etc).
 
 ## How it works
 
@@ -14,37 +14,37 @@ SIMP observes everything that happens on the server and stores it in a local SQL
 
 Planned on top of this foundation:
 
-- **Groups** — players can join groups that affect leaderboards and compete against each other
-- **Events** — players can organize and participate in events for points and reputation
-- **Game integrations** — Minecraft, VRChat, etc., tracked in-game for bonus points
-- **Rich content bonuses** — posts with images, audio, video, or substantial text earn bonus points for artistic/educational value
-- **Achievements** — per-player unlockable achievements
-- **Cycle titles** — stat-based awards each cycle (e.g. "tagarela" for most messages, "exposed" for longest text, "dormiu?" for most time in call)
+- **Groups**: players can join groups that affect leaderboards and compete against each other
+- **Events**: players can organize and participate in events for points and reputation
+- **Game integrations**: Minecraft, VRChat, etc., tracked in-game for bonus points
+- **Rich content bonuses**: posts with images, audio, video, or substantial text earn bonus points for artistic/educational value
+- **Achievements**: per-player unlockable achievements
+- **Cycle titles**: stat-based awards each cycle (e.g. "tagarela" for most messages, "exposed" for longest text, "dormiu?" for most time in call)
 
 ## Status
 
-Early stage. Currently implemented: activity logging only (messages, mentions, voice sessions) and user syncing. The economy layer (points, rent, cycles, groups, achievements, events) is not built yet — logging is being finished first, as the foundation everything else depends on.
+**Early stage.** Currently implemented: activity logging only (messages, mentions, voice sessions) and user syncing. The economy layer (points, rent, cycles, groups, achievements, events) is not built yet and logging is being finished first, as the foundation everything else depends on.
 
 ## Architecture
 
 ```
-main.py          entrypoint — loop setup, schema init, graceful shutdown
-bot.py           discord.Bot instance, event handlers (on_message, on_voice_state_update, etc.)
-db.py            Database — connection + generic access to named SQL queries
-models.py        active-record style models (User, Message, Mention, VoiceSession)
-queries.py       loader/runner for named .sql queries (a small in-house aiosql alternative)
+main.py          entrypoint: loop setup, schema init, graceful shutdown
+bot.py           discord: Bot instance, event handlers (on_message, on_voice_state_update, etc.)
+db.py            Database: connection + generic access to named SQL queries
+models.py        Model: active-record style models (User, Message, Mention, VoiceSession)
+queries.py       Querie Loader: loader/runner for named .sql queries (a small in-house aiosql alternative)
 config.py        .env loader (DISCORD_TOKEN, GUILD_ID)
-debug_cog.py      ephemeral slash commands for inspecting stored data during development
+debug_cog.py     DEBUG: ephemeral slash commands for inspecting stored data during development
 sql/
-  schema.sql      table definitions
+  schema.sql      SQL table definitions
   queries/
-    users.sql     named queries for the users table
-    log.sql       named queries for message/mention/voice logs
+    users.sql     SQL named queries for the users table
+    log.sql       SQL named queries for message/mention/voice logs
 ```
 
 ### Design notes
 
-- **Single dependency**: pycord only. No ORM, no aiosql — `queries.py` parses `-- name: query_name(params)suffix` comments out of `.sql` files and exposes them as callables, with `^`/`!`/`$`/none suffixes meaning "fetch one" / "execute" / "insert, return id" / "fetch all".
+- **Single dependency**: pycord only. No ORM, no aiosql, `queries.py` parses `-- name: query_name(params)suffix` comments out of `.sql` files and exposes them as callables, with `^`/`!`/`$`/none suffixes meaning "fetch one" / "execute" / "insert, return id" / "fetch all".
 - **Models are active record**: e.g. `User.upsert(db, id=..., nickname=...)` returns a `User`, and instance methods like `user.add_balance(db, delta)` write to the db and update the in-memory object in the same call, so it never goes stale after a write.
 - **Voice sessions** are tracked both in memory (`_open_voice_sessions`, for the running process) and in `log_voice` (nullable `left_at`/`duration` for open sessions). On startup, the bot reconciles the two: sessions still open in Discord are resumed, orphaned ones from a crash are closed out with an approximated end time.
 
